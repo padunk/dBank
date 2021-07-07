@@ -25,11 +25,24 @@ async function main() {
 
   console.log("Token address:", token.address);
 
+  const Bank = await ethers.getContractFactory("Bank");
+  const bank = await Bank.deploy();
+  await bank.deployed();
+
+  console.log("Bank address:", bank.address);
+
   // We also save the contract's artifacts and address in the frontend directory
-  saveFrontendFiles(token);
+  saveFrontendFiles(token, 'Token');
+  saveFrontendFiles(bank, 'Bank');
+
+  try {
+    await token.passMinterRole(bank.address);
+  } catch (error) {
+    console.log(error);
+  }
 }
 
-function saveFrontendFiles(token) {
+function saveFrontendFiles(token, name) {
   const fs = require("fs");
   const contractsDir = __dirname + "/../frontend/src/contracts";
 
@@ -37,16 +50,18 @@ function saveFrontendFiles(token) {
     fs.mkdirSync(contractsDir);
   }
 
+  const existingFile = JSON.parse(fs.readFileSync(contractsDir + "/contract-address.json", {encoding: 'utf-8'}))
+
   fs.writeFileSync(
     contractsDir + "/contract-address.json",
-    JSON.stringify({ Token: token.address }, undefined, 2)
+    JSON.stringify({ ...existingFile, [name]: token.address }, undefined, 2)
   );
 
-  const TokenArtifact = artifacts.readArtifactSync("Token");
+  const Artifact = artifacts.readArtifactSync(name);
 
   fs.writeFileSync(
-    contractsDir + "/Token.json",
-    JSON.stringify(TokenArtifact, null, 2)
+    contractsDir + `/${name}.json`,
+    JSON.stringify(Artifact, null, 2)
   );
 }
 
